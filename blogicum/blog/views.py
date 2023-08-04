@@ -126,7 +126,8 @@ class CommentCreateView(LoginRequiredMixin, CreateView):
     form_class = CommentsForm
     template_name = 'blog/comment.html'
     post_obj = None
-
+    form = CommentsForm
+    pk_url_kwarg = 'post_id'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -136,7 +137,6 @@ class CommentCreateView(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.author = self.request.user
-        form.instance.post = self.form
         return super().form_valid(form)
 
     def get_success_url(self):
