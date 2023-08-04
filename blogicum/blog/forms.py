@@ -2,7 +2,7 @@ from django import forms
 
 from django.contrib.auth import get_user_model
 
-from .models import Comments, Post
+from .models import Comment, Post
 
 User = get_user_model()
 
@@ -18,9 +18,9 @@ class ProfileForm(forms.ModelForm):
         )
 
 
-class CommentsForm(forms.ModelForm):
+class CommentForm(forms.ModelForm):
     class Meta:
-        model = Comments
+        model = Comment
         fields = ('text',)
 
 
