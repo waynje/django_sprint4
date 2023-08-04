@@ -23,9 +23,9 @@ class PostListView(ListView):
 
     def get_queryset(self):
         return (self.model.objects.select_related(
-            'location', 'author', 'category')
-             .filter(is_published=True, category__is_published=True,
-                     pub_date__lte=timezone.now()).order_by('-pub_date'))
+                'location', 'author', 'category').filter(
+                is_published=True, category__is_published=True,
+                pub_date__lte=timezone.now()).order_by('-pub_date'))
 
 
 class PostDetailView(DetailView):
