@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.views import LoginView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -11,20 +12,19 @@ from blog.models import Post, Category, Comment
 from blog.forms import ProfileForm, CommentForm, PostForm
 
 User = get_user_model()
+POSTS_PER_PAGE = 10
 
 
 class PostListView(ListView):
     template_name = 'blog/index.html'
     model = Post
-    paginate_by = 10
+    paginate_by = POSTS_PER_PAGE
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['page_obj'] = Post.objects.filter(is_published=True,
-                                                  category__is_published=True,
-                                                  pub_date__lte=timezone.now()).order_by('-pub_date')
-        return context
-
+    def get_queryset(self):
+        return(self.model.objects.select_related('location','author','category')
+               .filter(is_published=True,category__is_published=True,
+                       pub_date__lte=timezone.now()).order_by('-pub_date'))
+    
 
 class PostDetailView(DetailView):
     template_name = 'blog/detail.html'
@@ -43,6 +43,14 @@ class PostCreateView(LoginRequiredMixin, CreateView):
     model = Post
     form_class = PostForm
     template_name = 'blog/create.html'
+
+    def form_valid(self, form):
+        form.instance.author = self.request.user
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('blog:profile',
+                            kwargs={'slug': self.request.user})
 
 
 class PostUpdateView(LoginRequiredMixin, UpdateView):
@@ -75,7 +83,7 @@ class CategoryPosts(ListView):
     model = Post
     template_name = 'blog/category.html'
     context_object_name = 'page_obj'
-    paginate_by = 10
+    paginate_by = POSTS_PER_PAGE
 
     def get_queryset(self):
         current_time = timezone.now()
@@ -99,11 +107,19 @@ class CategoryPosts(ListView):
         return context
 
 
+class ProfileLoginView(LoginView):
+    def get_success_url(self):
+        url = reverse(
+            'blog:profile',
+            args=(self.request.user.get_username(),)
+        )
+        return url
+
 class ProfileListView(ListView):
     model = User
     template_name = 'blog/profile.html'
     context_object_name = 'profile'
-    paginate_by = 10
+    paginate_by = POSTS_PER_PAGE
 
     def get_queryset(self):
         user = get_object_or_404(User, username=self.kwargs['slug'])
@@ -122,6 +138,7 @@ class ProfileListView(ListView):
         context['profile'] = profile_list
         context['page_number'] = page_number
         return context
+
 
 class ProfileUpdateView(LoginRequiredMixin, UpdateView):
     model = User
