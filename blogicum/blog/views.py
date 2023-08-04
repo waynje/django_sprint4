@@ -24,8 +24,8 @@ class PostListView(ListView):
     def get_queryset(self):
         return (self.model.objects.select_related(
             'location', 'author', 'category')
-                .filter(is_published=True, category__is_published=True,
-                        pub_date__lte=timezone.now()).order_by('-pub_date'))
+             .filter(is_published=True, category__is_published=True,
+                     pub_date__lte=timezone.now()).order_by('-pub_date'))
 
 
 class PostDetailView(DetailView):
@@ -113,13 +113,12 @@ class CategoryPosts(ListView):
     def get_queryset(self):
         current_time = timezone.now()
         category_slug = self.kwargs.get('slug')
-        category = get_object_or_404(
-                                     Category,
+        category = get_object_or_404(Category,
                                      is_published=True,
                                      slug=category_slug)
-        return category.post_set.filter(pub_date__lte=current_time,
-                                        is_published=True).order_by(
-                                        '-pub_date')
+        return category.post_set.filter(
+            pub_date__lte=current_time,
+            is_published=True).order_by('-pub_date')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
