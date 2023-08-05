@@ -5,8 +5,7 @@ from .models import Post, User, Comment, Category
 
 
 def get_posts_data():
-    return Post.objects.filter(
-                               is_published=True,
+    return Post.objects.filter(is_published=True,
                                category__is_published=True,
                                pub_date__lte=timezone.now())
 
@@ -25,7 +24,6 @@ def get_comment_by_comment_id(self):
 
 
 def get_category_by_slug(self):
-    return get_object_or_404(
-                             Category,
+    return get_object_or_404(Category,
                              is_published=True,
                              slug=self.kwargs.get('slug'))
