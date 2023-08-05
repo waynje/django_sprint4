@@ -10,20 +10,22 @@ from django.views.generic import (
 
 from blog.models import Post, Category, Comment, User
 from blog.forms import ProfileForm, CommentForm, PostForm
+from .utils import (
+    get_posts_data, get_post_by_id,
+    get_user_by_slug,
+    get_comment_by_comment_id,
+    get_category_by_slug
+)
 
 POSTS_PER_PAGE = 10
 
 
 class PostListView(ListView):
     template_name = 'blog/index.html'
-    model = Post
     paginate_by = POSTS_PER_PAGE
 
     def get_queryset(self):
-        return (self.model.objects.select_related(
-                'location', 'author', 'category').filter(
-                is_published=True, category__is_published=True,
-                pub_date__lte=timezone.now()))
+        return get_posts_data()
 
 
 class PostDetailView(DetailView):
@@ -69,7 +71,7 @@ class PostMixin(LoginRequiredMixin):
     pk_url_kwarg = 'post_id'
 
     def dispatch(self, request, *args, **kwargs):
-        instance = get_object_or_404(Post, pk=self.kwargs['post_id'])
+        instance = get_post_by_id(self)
         if instance.author != request.user:
             return redirect('blog:post_detail', pk=self.kwargs['post_id'])
         return super().dispatch(request, *args, **kwargs)
@@ -112,11 +114,7 @@ class CategoryPosts(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        category = get_object_or_404(
-            Category,
-            is_published=True,
-            slug=self.kwargs.get('slug'))
-        context['category'] = category
+        context['category'] = get_category_by_slug(self)
         return context
 
 
@@ -135,7 +133,7 @@ class ProfileListView(ListView):
     paginate_by = POSTS_PER_PAGE
 
     def get_queryset(self):
-        user = get_object_or_404(User, username=self.kwargs['slug'])
+        user = get_user_by_slug(self)
         posts = user.post_set.all()
 
         self.extra_context = {
@@ -146,8 +144,7 @@ class ProfileListView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         page_number = self.request.GET.get('page')
-        context['profile'] = get_object_or_404(User,
-                                               username=self.kwargs['slug'])
+        context['profile'] = get_user_by_slug(self)
         context['page_number'] = page_number
         return context
 
@@ -172,7 +169,7 @@ class CommentMixin(LoginRequiredMixin):
 
     def dispatch(self, request, *args, **kwargs):
         self.p_id = kwargs['post_id']
-        comment = get_object_or_404(Comment, pk=self.kwargs['comment_id'])
+        comment = get_comment_by_comment_id(self)
         if comment.author != request.user:
             return redirect('blog:post_detail', pk=self.p_id)
         return super().dispatch(request, *args, **kwargs)
@@ -195,12 +192,12 @@ class CommentCreateView(LoginRequiredMixin, CreateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['post'] = get_object_or_404(Post, pk=kwargs['post_id'])
+        context['post'] = get_post_by_id(self)
         return context
 
     def form_valid(self, form):
         form.instance.author = self.request.user
-        form.instance.post = get_object_or_404(Post, pk=self.kwargs['post_id'])
+        form.instance.post = get_post_by_id(self)
         return super().form_valid(form)
 
     def get_success_url(self):
@@ -219,7 +216,7 @@ class CommentDeleteView(LoginRequiredMixin, DeleteView):
     pk_url_kwarg = 'comment_id'
 
     def dispatch(self, request, *args, **kwargs):
-        instance = get_object_or_404(Comment, pk=self.kwargs['comment_id'])
+        instance = get_comment_by_comment_id(self)
         if instance.author != request.user:
             return redirect('blog:post_detail', pk=kwargs['post_id'])
         return super().dispatch(request, *args, **kwargs)
