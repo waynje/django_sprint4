@@ -39,10 +39,9 @@ class PostDetailView(DetailView):
 
     def get_context_data(self, **kwargs):
         return dict(
-          **super().get_context_data(**kwargs),
-          form=CommentForm(),
-          comments=self.object.post_comments.all()
-          )
+                    **super().get_context_data(**kwargs),
+                    form=CommentForm(),
+                    comments=self.object.post_comments.all())
 
 
 class PostCreateView(LoginRequiredMixin, CreateView):
@@ -95,7 +94,6 @@ class CategoryPosts(ListView):
 
     def get_queryset(self):
         current_time = timezone.now()
-
         return get_object_or_404(
             Category,
             is_published=True,
