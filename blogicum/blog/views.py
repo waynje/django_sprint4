@@ -2,15 +2,14 @@ from django.contrib.auth.views import LoginView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
-from django.utils import timezone
 from django.urls import reverse
 from django.views.generic import (
     DetailView, CreateView, ListView, UpdateView, DeleteView
 )
 
-from blog.models import Post, Comment, User
+from blog.models import Post, Comment, User, Category
 from blog.forms import ProfileForm, CommentForm, PostForm
-from .utils import posts_filtered, get_user_by_slug, category_filtered
+from .utils import posts_filtered
 
 POSTS_PER_PAGE = 10
 
@@ -81,7 +80,7 @@ class PostDeleteView(PostMixin, DeleteView):
 
     def get_success_url(self):
         return reverse('blog:profile',
-                       kwargs={'slug': self.request.user.get_username()})
+                       args=[self.request.user.get_username()])
 
 
 class CategoryPosts(ListView):
@@ -90,16 +89,20 @@ class CategoryPosts(ListView):
     context_object_name = 'page_obj'
     paginate_by = POSTS_PER_PAGE
 
-    def get_queryset(self):
-        current_time = timezone.now()
-        return category_filtered(self).posts.filter(
-            pub_date__lte=current_time,
+    def get_object(self):
+        self.object = get_object_or_404(
+            Category,
+            slug=self.kwargs['slug'],
             is_published=True)
+        return self.object
+
+    def get_queryset(self):
+        return posts_filtered(self.get_object().posts)
 
     def get_context_data(self, **kwargs):
         return dict(
             **super().get_context_data(**kwargs),
-            category=category_filtered(self)
+            category=self.get_object()
         )
 
 
@@ -116,15 +119,19 @@ class ProfileListView(ListView):
     template_name = 'blog/profile.html'
     paginate_by = POSTS_PER_PAGE
 
+    def get_object(self):
+        self.object = get_object_or_404(User,
+                                        username=self.kwargs['slug'])
+        return self.object
+
     def get_queryset(self):
-        user = get_user_by_slug(self)
-        posts = user.posts.all()
+        posts = self.get_object().posts.all()
         return posts
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         page_number = self.request.GET.get('page')
-        context['profile'] = get_user_by_slug(self)
+        context['profile'] = self.get_object()
         context['page_number'] = page_number
         return context
 
@@ -192,4 +199,3 @@ class CommentUpdateView(CommentMixin, UpdateView):
 
 class CommentDeleteView(CommentMixin, DeleteView):
     template_name = 'blog/comment.html'
-    pk_url_kwarg = 'comment_id'
