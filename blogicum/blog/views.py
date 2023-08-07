@@ -7,8 +7,8 @@ from django.views.generic import (
     DetailView, CreateView, ListView, UpdateView, DeleteView
 )
 
-from blog.models import Post, Comment, User, Category
-from blog.forms import ProfileForm, CommentForm, PostForm
+from .forms import ProfileForm, CommentForm, PostForm
+from .models import Post, Comment, User, Category
 from .utils import posts_filtered
 
 POSTS_PER_PAGE = 10
@@ -53,7 +53,7 @@ class PostCreateView(LoginRequiredMixin, CreateView):
 
     def get_success_url(self):
         return reverse('blog:profile',
-                       kwargs={'slug': self.request.user.get_username()})
+                       args=[self.request.user.get_username()])
 
 
 class PostMixin(LoginRequiredMixin):
@@ -90,11 +90,10 @@ class CategoryPosts(ListView):
     paginate_by = POSTS_PER_PAGE
 
     def get_object(self):
-        self.object = get_object_or_404(
+        return get_object_or_404(
             Category,
             slug=self.kwargs['slug'],
             is_published=True)
-        return self.object
 
     def get_queryset(self):
         return posts_filtered(self.get_object().posts)
@@ -120,20 +119,18 @@ class ProfileListView(ListView):
     paginate_by = POSTS_PER_PAGE
 
     def get_object(self):
-        self.object = get_object_or_404(User,
-                                        username=self.kwargs['slug'])
-        return self.object
+        return get_object_or_404(User,
+                                 username=self.kwargs['slug'])
 
     def get_queryset(self):
-        posts = self.get_object().posts.all()
-        return posts
+        return self.get_object().posts.all()
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        page_number = self.request.GET.get('page')
-        context['profile'] = self.get_object()
-        context['page_number'] = page_number
-        return context
+        return dict(
+            **super().get_context_data(**kwargs),
+            profile=self.get_object(),
+            page_number=self.request.GET.get('page')
+        )
 
 
 class ProfileUpdateView(LoginRequiredMixin, UpdateView):
