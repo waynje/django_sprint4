@@ -8,9 +8,9 @@ from django.views.generic import (
     DetailView, CreateView, ListView, UpdateView, DeleteView
 )
 
-from blog.models import Post, Comment, User, Category
+from blog.models import Post, Comment, User
 from blog.forms import ProfileForm, CommentForm, PostForm
-from .utils import posts_filtered
+from .utils import posts_filtered, get_user_by_slug, category_filtered
 
 POSTS_PER_PAGE = 10
 
@@ -40,7 +40,7 @@ class PostDetailView(DetailView):
     def get_context_data(self, **kwargs):
         return dict(**super().get_context_data(**kwargs),
                     form=CommentForm(),
-                    comments=self.object.post_comments.all())
+                    comments=self.object.comments.all())
 
 
 class PostCreateView(LoginRequiredMixin, CreateView):
@@ -54,7 +54,7 @@ class PostCreateView(LoginRequiredMixin, CreateView):
 
     def get_success_url(self):
         return reverse('blog:profile',
-                       kwargs={'slug': self.request.user})
+                       kwargs={'slug': self.request.user.get_username()})
 
 
 class PostMixin(LoginRequiredMixin):
@@ -71,11 +71,10 @@ class PostMixin(LoginRequiredMixin):
 
 
 class PostUpdateView(PostMixin, UpdateView):
-    pk_url_kwarg = 'post_id'
 
     def get_success_url(self):
         return reverse('blog:post_detail',
-                       kwargs={'post_id': self.kwargs['post_id']})
+                       args=[self.kwargs['post_id']])
 
 
 class PostDeleteView(PostMixin, DeleteView):
@@ -93,19 +92,14 @@ class CategoryPosts(ListView):
 
     def get_queryset(self):
         current_time = timezone.now()
-        return get_object_or_404(
-            Category,
-            is_published=True,
-            slug=self.kwargs.get('slug')).category_posts.filter(
+        return category_filtered(self).posts.filter(
             pub_date__lte=current_time,
             is_published=True)
 
     def get_context_data(self, **kwargs):
         return dict(
             **super().get_context_data(**kwargs),
-            category=get_object_or_404(Category,
-                                       is_published=True,
-                                       slug=self.kwargs.get('slug'))
+            category=category_filtered(self)
         )
 
 
@@ -123,20 +117,14 @@ class ProfileListView(ListView):
     paginate_by = POSTS_PER_PAGE
 
     def get_queryset(self):
-        user = get_object_or_404(User,
-                                 username=self.kwargs['slug'])
+        user = get_user_by_slug(self)
         posts = user.posts.all()
-
-        self.extra_context = {
-            'profile': user,
-        }
         return posts
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         page_number = self.request.GET.get('page')
-        context['profile'] = get_object_or_404(User,
-                                               username=self.kwargs['slug'])
+        context['profile'] = get_user_by_slug(self)
         context['page_number'] = page_number
         return context
 
@@ -167,7 +155,7 @@ class CommentMixin(LoginRequiredMixin):
 
     def get_success_url(self):
         return reverse('blog:post_detail',
-                       kwargs={'post_id': self.kwargs['post_id']})
+                       args=[self.kwargs['post_id']])
 
 
 class CommentCreateView(LoginRequiredMixin, CreateView):
@@ -190,7 +178,7 @@ class CommentCreateView(LoginRequiredMixin, CreateView):
     def get_success_url(self):
         return reverse(
             'blog:post_detail',
-            kwargs={'post_id': self.kwargs['post_id']})
+            args=[self.kwargs['post_id']])
 
 
 class CommentUpdateView(CommentMixin, UpdateView):
@@ -203,6 +191,5 @@ class CommentUpdateView(CommentMixin, UpdateView):
 
 
 class CommentDeleteView(CommentMixin, DeleteView):
-    model = Comment
     template_name = 'blog/comment.html'
     pk_url_kwarg = 'comment_id'
