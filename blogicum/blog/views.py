@@ -38,8 +38,7 @@ class PostDetailView(DetailView):
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
-        return dict(
-                    **super().get_context_data(**kwargs),
+        return dict(**super().get_context_data(**kwargs),
                     form=CommentForm(),
                     comments=self.object.post_comments.all())
 
