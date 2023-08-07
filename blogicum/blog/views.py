@@ -129,7 +129,6 @@ class ProfileListView(ListView):
         return dict(
             **super().get_context_data(**kwargs),
             profile=self.get_object(),
-            page_number=self.request.GET.get('page')
         )
 
 
@@ -168,12 +167,6 @@ class CommentCreateView(LoginRequiredMixin, CreateView):
     template_name = 'blog/comment.html'
     pk_url_kwarg = 'post_id'
 
-    def get_context_data(self, **kwargs):
-        return dict(
-            **super().get_context_data(**kwargs),
-            post=get_object_or_404(Post, pk=self.kwargs['post_id'])
-        )
-
     def form_valid(self, form):
         form.instance.author = self.request.user
         form.instance.post = get_object_or_404(Post, pk=self.kwargs['post_id'])
@@ -190,7 +183,6 @@ class CommentUpdateView(CommentMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['form'] = CommentForm(instance=self.object)
         return context
 
 
